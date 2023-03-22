@@ -11,6 +11,7 @@ services:
     networks:
       - testing_net
 
+
   client1:
     container_name: client1
     image: client:latest
@@ -23,6 +24,7 @@ services:
     depends_on:
       - server
 
+
   client2:
     container_name: client2
     image: client:latest
@@ -33,7 +35,21 @@ services:
     networks:
       - testing_net
     depends_on:
-      - server    
+      - server
+
+
+  client3:
+    container_name: client3
+    image: client:latest
+    entrypoint: /client
+    environment:
+      - CLI_ID=3
+      - CLI_LOG_LEVEL=DEBUG
+    networks:
+      - testing_net
+    depends_on:
+      - server
+
 
 networks:
   testing_net:
@@ -41,3 +57,4 @@ networks:
       driver: default
       config:
         - subnet: 172.25.125.0/24
+
