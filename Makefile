@@ -37,3 +37,8 @@ docker-compose-down:
 docker-compose-logs:
 	docker compose -f docker-compose-dev.yaml logs -f
 .PHONY: docker-compose-logs
+
+netcat-server:
+	docker build -f ./ejercicio3-netcat/Dockerfile -t ejercicio-netcat .
+	docker run --rm --network tp0_testing_net --env-file ./ejercicio3-netcat/config.cfg ejercicio-netcat ./netcat.sh
+.PHONY: docker-compose-logs

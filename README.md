@@ -1,11 +1,15 @@
-# Ejercicio  N°2
+# Ejercicio  N°3
 
 ## Enunciado:
-Modificar el cliente y el servidor para lograr que realizar cambios en el archivo de configuración no requiera un nuevo build de las imágenes de Docker para que los mismos sean efectivos. La configuración a través del archivo correspondiente (`config.ini` y `config.yaml`, dependiendo de la aplicación) debe ser inyectada en el container y persistida afuera de la imagen (hint: `docker volumes`).
+Crear un script que permita verificar el correcto funcionamiento del servidor utilizando el comando `netcat` para interactuar con el mismo. Dado que el servidor es un EchoServer, se debe enviar un mensaje al servidor y esperar recibir el mismo mensaje enviado. Netcat no debe ser instalado en la máquina _host_ y no se puede exponer puertos del servidor para realizar la comunicación (hint: `docker network`).
 
 ## Solución:
+Se crea una carpeta `ejercicio3-netcat` la cual cuenta con un Dockerfile, un script bash y un archivo de configuración. El Dockerfile descarga netcat desde una imagen base de alpine y copia el script. El script simplemente envia un mensaje tcp a la dirección y puerto del server, e imprime por consola el resultado del echo request.
 
-Se elimina la linea que copia el archivo de configuración al construir la imagen en el Dockerfile del cliente. Además, se agregan los archivos `.dockerignore` tanto para el cliente como para el servidor, para que no se copien los archivos de configuración en el proceso de build de las imágenes.
+Se agrega un comando al Makefile para que se pueda testear este ejercicio de un modo más simple utilizando:
 
-Se modifica el DockerCompose, agregando a los archivos de configuración como volumes para el servidor y el cliente respectivamente. De esto modo, no es necesario hacer un rebuild de la imagen si uno quiere levantar un contenedor con un archivo de configuración modificado.  
+```bash
+make netcat-server
+```
 
+Esto hace el build de la imagen en `ejercicio3-netcat/Dockerfile`, y luego la corre en la red `tp0_testing_net`, agregando las variables de entorno del archivo de configuración, en este caso, sólamente el puerto del servidor.
