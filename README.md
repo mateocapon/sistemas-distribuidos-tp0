@@ -1,19 +1,11 @@
-### Ejercicio N°1.1
+# Ejercicio  N°2
 
-### Enunciado:
-Definir un script (en el lenguaje deseado) que permita crear una definición de DockerCompose con una cantidad configurable de clientes.
+## Enunciado:
+Modificar el cliente y el servidor para lograr que realizar cambios en el archivo de configuración no requiera un nuevo build de las imágenes de Docker para que los mismos sean efectivos. La configuración a través del archivo correspondiente (`config.ini` y `config.yaml`, dependiendo de la aplicación) debe ser inyectada en el container y persistida afuera de la imagen (hint: `docker volumes`).
 
-### Solución:
-Se crea un archivo en el directorio root del proyecto, llamado `create-docker-compose-N.sh`. El mismo se corre con:
+## Solución:
 
-```bash
-./create-docker-compose-N.sh <N_CLIENTS>
-```
+Se elimina la linea que copia el archivo de configuración al construir la imagen en el Dockerfile del cliente. Además, se agregan los archivos `.dockerignore` tanto para el cliente como para el servidor, para que no se copien los archivos de configuración en el proceso de build de las imágenes.
 
-Sobreescribe el archivo llamado `docker-compose-dev.yaml`, creando una definición de DockerCompose con N_CLIENTS clientes.
+Se modifica el DockerCompose, agregando a los archivos de configuración como volumes para el servidor y el cliente respectivamente. De esto modo, no es necesario hacer un rebuild de la imagen si uno quiere levantar un contenedor con un archivo de configuración modificado.  
 
-Recordar darle los permisos de ejecución al archivo con 
-
-```bash
-chmod a+x create-docker-compose-N.sh
-````
