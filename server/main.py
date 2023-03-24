@@ -48,8 +48,11 @@ def main():
                   f"listen_backlog: {listen_backlog} | logging_level: {logging_level}")
 
     # Initialize server and start server loop
-    server = Server(port, listen_backlog)
-    server.run()
+    try:
+        server = Server(port, listen_backlog)
+        server.run()
+    except OSError as e:
+        logging.error(f'action: initialize_server | result: fail | error: {e}')
 
 def initialize_log(logging_level):
     """

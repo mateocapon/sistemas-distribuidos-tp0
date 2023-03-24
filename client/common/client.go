@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net"
 	"time"
+    "os"
+    "os/signal"
+    "syscall"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -52,6 +55,8 @@ func (c *Client) createClientSocket() error {
 func (c *Client) StartClientLoop() {
 	// autoincremental msgID to identify every message sent
 	msgID := 1
+    signalChan := make(chan os.Signal, 1)
+    signal.Notify(signalChan, syscall.SIGTERM)
 
 loop:
 	// Send messages if the loopLapse threshold has not been surpassed
@@ -62,6 +67,11 @@ loop:
                 c.config.ID,
             )
 			break loop
+        case <-signalChan:
+            log.Infof("action: sigterm_detected | result: success | client_id: %v",
+                c.config.ID,
+            )
+            break loop
 		default:
 		}
 
