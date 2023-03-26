@@ -42,7 +42,8 @@ class Server:
             # TODO: Modify the send to avoid short-writes
             client_sock.send("{}\n".format(msg).encode('utf-8'))
         except OSError as e:
-            logging.error(f'action: receive_message | result: fail | error: {e}')
+            if self._server_active:
+                logging.error(f'action: receive_message | result: fail | error: {e}')
         finally:
             client_sock.close()
             logging.info(f'action: close_client | result: success | ip: {addr[0]}')
