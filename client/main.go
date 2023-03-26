@@ -3,9 +3,8 @@ package main
 import (
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/pkg/errors"
+//	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -32,9 +31,12 @@ func InitConfig() (*viper.Viper, error) {
 	// Add env variables supported
 	v.BindEnv("id")
 	v.BindEnv("server", "address")
-	v.BindEnv("loop", "period")
-	v.BindEnv("loop", "lapse")
 	v.BindEnv("log", "level")
+	v.BindEnv("firstname")
+	v.BindEnv("lastname")
+	v.BindEnv("document")
+	v.BindEnv("birthdate")
+	v.BindEnv("number")
 
 	// Try to read configuration from config file. If config file
 	// does not exists then ReadInConfig will fail but configuration
@@ -43,15 +45,6 @@ func InitConfig() (*viper.Viper, error) {
 	v.SetConfigFile("./config.yaml")
 	if err := v.ReadInConfig(); err != nil {
 		fmt.Printf("Configuration could not be read from config file. Using env variables instead")
-	}
-
-	// Parse time.Duration variables and return an error if those variables cannot be parsed
-	if _, err := time.ParseDuration(v.GetString("loop.lapse")); err != nil {
-		return nil, errors.Wrapf(err, "Could not parse CLI_LOOP_LAPSE env var as time.Duration.")
-	}
-
-	if _, err := time.ParseDuration(v.GetString("loop.period")); err != nil {
-		return nil, errors.Wrapf(err, "Could not parse CLI_LOOP_PERIOD env var as time.Duration.")
 	}
 
 	return v, nil
@@ -78,13 +71,16 @@ func InitLogger(logLevel string) error {
 // PrintConfig Print all the configuration parameters of the program.
 // For debugging purposes only
 func PrintConfig(v *viper.Viper) {
-	logrus.Infof("action: config | result: success | client_id: %s | server_address: %s | loop_lapse: %v | loop_period: %v | log_level: %s",
+	logrus.Infof("action: config | result: success | agency_id: %s | server_address: %s | logging_level: %s"+
+	             " | firstname: %s | lastname: %s | document: %s | birthdate: %s | number: %s",
 	    v.GetString("id"),
 	    v.GetString("server.address"),
-	    v.GetDuration("loop.lapse"),
-	    v.GetDuration("loop.period"),
 	    v.GetString("log.level"),
-    )
+	    v.GetString("firstname"),
+			v.GetString("lastname"),
+			v.GetString("document"),
+			v.GetString("birthdate"),
+			v.GetString("number"))
 }
 
 func main() {
@@ -103,10 +99,13 @@ func main() {
 	clientConfig := common.ClientConfig{
 		ServerAddress: v.GetString("server.address"),
 		ID:            v.GetString("id"),
-		LoopLapse:     v.GetDuration("loop.lapse"),
-		LoopPeriod:    v.GetDuration("loop.period"),
+		FistName:    	 v.GetString("firstname"),
+		LastName:	     v.GetString("lastname"),
+		Document:	     v.GetString("document"),
+		Birthdate:	   v.GetString("birthdate"),
+		Number:      	 v.GetString("number"),
 	}
 
 	client := common.NewClient(clientConfig)
-	client.StartClientLoop()
+	client.StartClient()
 }
