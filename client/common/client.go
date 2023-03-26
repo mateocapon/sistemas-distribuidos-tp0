@@ -14,11 +14,7 @@ type ClientConfig struct {
 	ID            string
 	ServerAddress string
 	MaxPackageSize int
-	FirstName      string
-	LastName      string
-	Document      string
-	Birthdate     string
-	Number        string
+	BatchSize      int
 }
 
 // Client Entity that encapsulates how
@@ -59,39 +55,16 @@ func (c *Client) StartClient() {
 
 	// Create the connection the server in every loop iteration. Send an
 	c.createClientSocket()
-	bet := Bet{
-		ID:            c.config.ID,
-		FirstName:     c.config.FirstName,
-		LastName:	   c.config.LastName,
-		Document:	   c.config.Document,
-		Birthdate:	   c.config.Birthdate,
-		Number:        c.config.Number,
-	}
 	protocol := NewProtocol(c.config.MaxPackageSize)
-	err := protocol.sendBet(c.conn, bet)
-	if err != nil {
-		log.Errorf("action: send_message | result: fail | client_id: %v | error: %v",
-            c.config.ID,
-			err,
-		)
-		c.conn.Close()
-		return
-	}
-	confirmation, err := protocol.recvConfirmation(c.conn)		
+	betsreader := NewBetsReader(c.config.ID, c.config.BatchSize)
+	err := betsreader.processBets(c.conn, protocol)
 	c.conn.Close()
-
 	if err != nil {
-		log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
+		log.Errorf("action: send_bets | result: fail | client_id: %v | error: %v",
             c.config.ID,
 			err,
 		)
 		return
-	}
-	if confirmation {
-		log.Infof("action: apuesta_enviada | result: success | dni: %s | numero: %s", 
-		    bet.Document,
-		    bet.Number,
-		)
 	}
 	log.Infof("action: client_finished | result: success | client_id: %v", c.config.ID)
 }

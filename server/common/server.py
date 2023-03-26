@@ -2,7 +2,7 @@ import socket
 import logging
 import signal
 from common.utils import Bet, store_bets
-from common.protocol import receive_bet, send_confirmation
+from common.protocol import receive_bets_chunk, send_confirmation
 
 
 class Server:
@@ -38,11 +38,13 @@ class Server:
         client socket will also be closed
         """
         try:
-            bet = receive_bet(client_sock)
             addr = client_sock.getpeername()
-            store_bets([bet])
-            logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
-            send_confirmation(client_sock)
+            more_chunks = True
+            while more_chunks:
+                more_chunks, bets, agency = receive_bets_chunk(client_sock)
+                store_bets(bets)
+                logging.info(f'action: apuesta_almacenada | result: success | agency: {agency} | n: {len(bets)} | active: {more_chunks}')
+                send_confirmation(client_sock)
         except OSError as e:
             if self._server_active:
                 logging.error(f'action: receive_message | result: fail | error: {e}')

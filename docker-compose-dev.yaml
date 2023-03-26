@@ -21,13 +21,24 @@ services:
     environment:
       - CLI_ID=1
       - CLI_LOG_LEVEL=DEBUG
-      - CLI_FIRSTNAME=Mateo
-      - CLI_LASTNAME=Capon Blanquer
-      - CLI_DOCUMENT=42496666
-      - CLI_BIRTHDATE=2000-03-03
-      - CLI_NUMBER=1234
     volumes:
       - ./client/config.yaml:/config.yaml
+      - ./.data/dataset/agency-1.csv:/agency-1.csv
+    networks:
+      - testing_net
+    depends_on:
+      - server
+
+  client2:
+    container_name: client2
+    image: client:latest
+    entrypoint: /client
+    environment:
+      - CLI_ID=2
+      - CLI_LOG_LEVEL=DEBUG
+    volumes:
+      - ./client/config.yaml:/config.yaml
+      - ./.data/dataset/agency-2.csv:/agency-2.csv
     networks:
       - testing_net
     depends_on:

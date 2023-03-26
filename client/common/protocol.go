@@ -3,20 +3,13 @@ package common
 import (
     "net"
     "errors"
-    "bytes"
     "bufio"
+    "bytes"
     "fmt"
     "encoding/binary"
 )
 
-type Bet struct {
-    ID            string
-    FirstName     string
-    LastName      string
-    Document      string
-    Birthdate     string
-    Number        string
-}
+
 
 type Protocol struct {
     maxPackageSize int
@@ -31,26 +24,37 @@ func NewProtocol(maxPackageSize int) *Protocol {
 
 
 const LEN_STRING = 2
+const LEN_BETS = 2
+const SIMPLE_CHUNK = 'C'
+const LAST_CHUNK = 'L'
 
-func (p *Protocol) sendBet(conn net.Conn, bet Bet) error {
-    lenMessage := LEN_STRING + len(bet.ID) + LEN_STRING + len(bet.FirstName) +
-                  LEN_STRING + len(bet.LastName) + LEN_STRING + len(bet.Document) +
-                  LEN_STRING + len(bet.Birthdate) + LEN_STRING + len(bet.Number)
-    if lenMessage > p.maxPackageSize {
-        return errors.New(fmt.Sprintf("Package of size %d is too big", lenMessage)) 
-    }
 
-    data := [][]byte{toBigEndian(len(bet.ID)), []byte(bet.ID), 
+func (p *Protocol) sendBets(conn net.Conn, bets []Bet, ID string, typeChunk byte) error {
+    var data [][]byte 
+    data = append(data, []byte{typeChunk}, toBigEndian(len(bets)), toBigEndian(len(ID)), []byte(ID))
+    for _, bet := range bets {
+        data = append(data, 
                      toBigEndian(len(bet.FirstName)), []byte(bet.FirstName),
                      toBigEndian(len(bet.LastName)), []byte(bet.LastName),
                      toBigEndian(len(bet.Document)), []byte(bet.Document),
                      toBigEndian(len(bet.Birthdate)), []byte(bet.Birthdate),
-                     toBigEndian(len(bet.Number)), []byte(bet.Number),
-                    }
+                     toBigEndian(len(bet.Number)), []byte(bet.Number))
+    }
     joined := bytes.Join(data, []byte(""))
+    if len(joined) > p.maxPackageSize {
+        return errors.New(fmt.Sprintf("Package of size %d is too big", len(data))) 
+    }
     return writeAll(conn, joined)
 }
 
+
+func (p *Protocol) sendBetsChunk(conn net.Conn, bets []Bet, ID string) error {
+    return p.sendBets(conn, bets, ID, SIMPLE_CHUNK)
+}
+
+func (p *Protocol) sendBetsLastChunk(conn net.Conn, bets []Bet, ID string) error {
+    return p.sendBets(conn, bets, ID, LAST_CHUNK)
+}
 
 func writeAll(conn net.Conn, data []byte) error {
     totalBytes := len(data)
