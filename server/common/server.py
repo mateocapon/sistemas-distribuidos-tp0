@@ -2,7 +2,7 @@ import socket
 import logging
 import signal
 from common.utils import Bet, store_bets
-from common.protocol import receive_bet, send_confirmation
+from common.protocol import receive_bet, send_confirmation, send_error
 
 
 class Server:
@@ -38,11 +38,14 @@ class Server:
         client socket will also be closed
         """
         try:
-            bet = receive_bet(client_sock)
             addr = client_sock.getpeername()
+            bet = receive_bet(client_sock)
             store_bets([bet])
             logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
             send_confirmation(client_sock)
+        except ValueError as e:
+            send_error(client_sock, f'error: {e}')
+            logging.error(f'action: receive_bet | result: fail | error: {e}')
         except OSError as e:
             logging.error(f'action: receive_message | result: fail | error: {e}')
         finally:

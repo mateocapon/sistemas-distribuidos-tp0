@@ -6,17 +6,9 @@ import (
     "bytes"
     "bufio"
     "fmt"
+    "io"
     "encoding/binary"
 )
-
-type Bet struct {
-    ID            string
-    FirstName     string
-    LastName      string
-    Document      string
-    Birthdate     string
-    Number        string
-}
 
 type Protocol struct {
     maxPackageSize int
@@ -31,7 +23,15 @@ func NewProtocol(maxPackageSize int) *Protocol {
 
 
 const LEN_STRING = 2
+const CONFIRMATION = 'O'
+const ERROR = 'E'
 
+
+// Send a bet through socket.
+// Data in buffer:
+// |2 bytes Big Endian len string | String | ... |
+// Above protocol is for all items in a bet, with order:
+// ID - FirstName - LastName - Document - BirthDate - Number
 func (p *Protocol) sendBet(conn net.Conn, bet Bet) error {
     lenMessage := LEN_STRING + len(bet.ID) + LEN_STRING + len(bet.FirstName) +
                   LEN_STRING + len(bet.LastName) + LEN_STRING + len(bet.Document) +
@@ -51,7 +51,7 @@ func (p *Protocol) sendBet(conn net.Conn, bet Bet) error {
     return writeAll(conn, joined)
 }
 
-
+// writes all the content of the data in socket.
 func writeAll(conn net.Conn, data []byte) error {
     totalBytes := len(data)
     bytesWritten := 0
@@ -65,15 +65,41 @@ func writeAll(conn net.Conn, data []byte) error {
     return nil
 }
 
+
+// waits for client confirmation. Throws the corresponding error.
 func (p *Protocol) recvConfirmation(conn net.Conn) (bool, error) {
-    read, err := bufio.NewReader(conn).ReadByte()
-    if err != nil || read != 'O' {
+    reader := bufio.NewReader(conn)
+    read, err := reader.ReadByte()
+    if err != nil {
         return false, err
+    }
+    if read == ERROR {
+        s, err := readString(reader)
+        if err != nil {
+            return false, err
+        }
+        return false, errors.New(fmt.Sprintf("server-error-response: %s", s))
     }
     return true, nil
 }
 
+// reads a String from socket, reading first the len of it 
+// in an uint16 type to avoid short reads.
+func readString(reader *bufio.Reader) (string, error) {
+    lenString := make([]byte, LEN_STRING)
+    if _, err := io.ReadFull(reader, lenString); err != nil {
+        return "", err
+    }
+    length := binary.BigEndian.Uint16(lenString)
+    stringData := make([]byte, length)
+    if _, err := io.ReadFull(reader, stringData); err != nil {
+        return "", err
+    }
+    return string(stringData), nil
+}
 
+// Passes int as uint16 to Big Endian.
+// int must fit in uint16. 
 func toBigEndian(number int) []byte {
     data := make([]byte, 2)
     binary.BigEndian.PutUint16(data, uint16(number))
