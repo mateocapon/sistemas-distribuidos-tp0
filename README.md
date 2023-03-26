@@ -22,3 +22,20 @@ Se deberá implementar un módulo de comunicación entre el cliente y el servido
 
 
 ## Solución:
+Se implementa un modulo de protocolo tanto en el cliente como en el servidor. El protocolo de envio de un Bet consta de enviar cada atributo de la apuesta como un string, cuyo tamaño se anticipa con dos bytes de un entero sin signo en big endian. Ejemplifico el funcionamiento del protocolo de comunicación, usando la apuesta dada en el docker compose por el cliente 1.
+
+- CLI_ID=1
+- CLI_FIRSTNAME=Mateo
+- CLI_LASTNAME=Capon Blanquer
+- CLI_DOCUMENT=42496666
+- CLI_BIRTHDATE=2000-03-03
+- CLI_NUMBER=1234 
+
+El packete se serializa en el orden de los atributos: id, nombre, apellido, documento, fecha de nacimiento y número. Por ejemplo, para serializar el atributo apellido, se toma el largo del apellido = len("Capon Blanquer") = 14. El largo se pasa a una tira de bytes ordenada en big endian de dos bytes, y luego se le adjunta el string correspondiente. Para este atributo queda la tira de bytes como:
+
+- tira bytes del apellido = "0x00 0x0E 'Capon Blanquer'"
+Este procedimiento se repite para todos los atributos y se almacena en una sola tira de bytes ordenada por atributo, la cual es enviada al servidor.
+
+
+Por su lado, el servidor deserializa este mensaje, y en caso de que la apuesta pueda ejecutarse, envia el byte b'O' al cliente, para notificarle la ejecución exitosa. Si no se puede almacenar la apuesta, por ejemplo, por un error de formato en los datos que pasa el cliente, se envia un byte con un codigo de error b'E', seguido del largo de un string en dos bytes big endian y un string con el mensje correspondiente al error.
+
