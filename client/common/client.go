@@ -13,7 +13,8 @@ import (
 type ClientConfig struct {
 	ID            string
 	ServerAddress string
-	FistName      string
+	MaxPackageSize int
+	FirstName      string
 	LastName      string
 	Document      string
 	Birthdate     string
@@ -60,13 +61,14 @@ func (c *Client) StartClient() {
 	c.createClientSocket()
 	bet := Bet{
 		ID:            c.config.ID,
-		FirstName:     c.config.FistName,
+		FirstName:     c.config.FirstName,
 		LastName:	   c.config.LastName,
 		Document:	   c.config.Document,
 		Birthdate:	   c.config.Birthdate,
 		Number:        c.config.Number,
 	}
-	err := sendBet(c.conn, bet)
+	protocol := NewProtocol(c.config.MaxPackageSize)
+	err := protocol.sendBet(c.conn, bet)
 	if err != nil {
 		log.Errorf("action: send_message | result: fail | client_id: %v | error: %v",
             c.config.ID,
@@ -75,7 +77,7 @@ func (c *Client) StartClient() {
 		c.conn.Close()
 		return
 	}
-	confirmation, err := recvConfirmation(c.conn)		
+	confirmation, err := protocol.recvConfirmation(c.conn)		
 	c.conn.Close()
 
 	if err != nil {

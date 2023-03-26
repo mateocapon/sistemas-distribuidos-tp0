@@ -32,6 +32,7 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("id")
 	v.BindEnv("server", "address")
 	v.BindEnv("log", "level")
+	v.BindEnv("protocol", "maxPackageSize")
 	v.BindEnv("firstname")
 	v.BindEnv("lastname")
 	v.BindEnv("document")
@@ -72,10 +73,11 @@ func InitLogger(logLevel string) error {
 // For debugging purposes only
 func PrintConfig(v *viper.Viper) {
 	logrus.Infof("action: config | result: success | agency_id: %s | server_address: %s | logging_level: %s"+
-	             " | firstname: %s | lastname: %s | document: %s | birthdate: %s | number: %s",
+	             " | maxPackageSize: %d | firstname: %s | lastname: %s | document: %s | birthdate: %s | number: %s",
 	    v.GetString("id"),
 	    v.GetString("server.address"),
 	    v.GetString("log.level"),
+	    v.GetInt("protocol.maxPackageSize"),
 	    v.GetString("firstname"),
 			v.GetString("lastname"),
 			v.GetString("document"),
@@ -99,7 +101,8 @@ func main() {
 	clientConfig := common.ClientConfig{
 		ServerAddress: v.GetString("server.address"),
 		ID:            v.GetString("id"),
-		FistName:    	 v.GetString("firstname"),
+		MaxPackageSize:v.GetInt("protocol.maxPackageSize"),
+		FirstName:     v.GetString("firstname"),
 		LastName:	     v.GetString("lastname"),
 		Document:	     v.GetString("document"),
 		Birthdate:	   v.GetString("birthdate"),

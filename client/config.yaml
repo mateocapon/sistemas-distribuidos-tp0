@@ -3,3 +3,5 @@ server:
   address: "server:12345"
 log:
   level: "info"
+protocol:
+  maxPackageSize: 8192

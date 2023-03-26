@@ -44,7 +44,8 @@ class Server:
             logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
             send_confirmation(client_sock)
         except OSError as e:
-            logging.error(f'action: receive_message | result: fail | error: {e}')
+            if self._server_active:
+                logging.error(f'action: receive_message | result: fail | error: {e}')
         finally:
             client_sock.close()
             logging.info(f'action: close_client | result: success | ip: {addr[0]}')
