@@ -79,6 +79,9 @@ func (c *Client) StartClient() {
 	}
 	confirmation, err := protocol.recvConfirmation(c.conn)		
 	c.conn.Close()
+	log.Infof("action: release_socketfd | result: success | client_id: %v",
+            c.config.ID,
+    )
 
 	if err != nil {
 		log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
