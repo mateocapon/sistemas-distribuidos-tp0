@@ -7,6 +7,7 @@ import (
     "bytes"
     "fmt"
     "encoding/binary"
+    "io"
 )
 
 
@@ -27,7 +28,7 @@ const LEN_STRING = 2
 const LEN_BETS = 2
 const SIMPLE_CHUNK = 'C'
 const LAST_CHUNK = 'L'
-
+const ERROR = 'E'
 
 // Send all bets through socket in one packet.
 // First bytes of the packet are:

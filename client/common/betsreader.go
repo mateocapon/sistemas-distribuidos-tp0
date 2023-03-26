@@ -38,7 +38,6 @@ func (b *BetsReader) processBets(conn net.Conn, protocol *Protocol) error {
     for {
         betData, err := reader.Read()
         if err != nil {
-            log.Infof("Se llega al EOF")
             if err == io.EOF {
                 break
             }
@@ -53,16 +52,13 @@ func (b *BetsReader) processBets(conn net.Conn, protocol *Protocol) error {
             Number:    betData[4],
         }
         bets = append(bets, bet)
-        log.Infof("bet: %s", bet.Document)
         if len(bets) == b.BatchSize {
             err := protocol.sendBetsChunk(conn, bets, b.ID)
             if err != nil {
-                log.Infof("Errror")
                 return err
             }
             confirmation, err := protocol.recvConfirmation(conn)
             if err != nil {
-                log.Infof("Errroor")
                 return err
             }
             if confirmation {
@@ -76,7 +72,6 @@ func (b *BetsReader) processBets(conn net.Conn, protocol *Protocol) error {
 
     err = protocol.sendBetsLastChunk(conn, bets, b.ID)
     if err != nil {
-        log.Infof("Errasdsfaroor")
         return err
     }
     confirmation, err := protocol.recvConfirmation(conn)
