@@ -1,32 +1,12 @@
-# Ejercicio  N°4
+# Ejercicio  N°6
 
 ## Enunciado:
-Modificar servidor y cliente para que ambos sistemas terminen de forma _graceful_ al recibir la signal SIGTERM. Terminar la aplicación de forma _graceful_ implica que todos los _file descriptors_ (entre los que se encuentran archivos, sockets, threads y procesos) deben cerrarse correctamente antes que el thread de la aplicación principal muera. Loguear mensajes en el cierre de cada recurso (hint: Verificar que hace el flag `-t` utilizado en el comando `docker compose down`).
+Modificar los clientes para que envíen varias apuestas a la vez (modalidad conocida como procesamiento por _chunks_ o _batchs_). La información de cada agencia será simulada por la ingesta de su archivo numerado correspondiente, provisto por la cátedra dentro de `.data/datasets.zip`.
+Los _batchs_ permiten que el cliente registre varias apuestas en una misma consulta, acortando tiempos de transmisión y procesamiento. La cantidad de apuestas dentro de cada _batch_ debe ser configurable.
+El servidor, por otro lado, deberá responder con éxito solamente si todas las apuestas del _batch_ fueron procesadas correctamente.
 
 ## Solución:
+Se agrega el modulo `betsreader` en el cliente. Este modulo se encarga de leer su archivo y apoyarse en el protocolo para enviar los chunks de apuestas.
+El protocolo por su lado fue modificado para que envie múltiples apuestas en un solo paquete. Si el cliente dejará de enviar apuestas, se envia un FLAG dentro del último paquete de apuestas, notificandole al servidor de esta situación.
 
-Se implementa un cierre polite del cliente y del servidor. Esto es, cuando se recibe la señal SIGTERM se permite que termine la comunicación entre el cliente y el servidor, no se cierran los peer sockets inmediatamente.
-
-### Servidor
-Se agrega el handler `__stop_accepting` en el server, de tal modo que se haga el shutdown y close del socket aceptador, cuando se recibe la signal SIGTERM. De este modo, se dejan de aceptar conexiones nuevas. Una vez que la conexión con el cliente actual termine, el programa finaliza. 
-
-### Cliente
-Se agrega un channel por el cual se notifica la llegada de la señal SIGTERM. Ante la misma, se espera que termine el loop y se finaliza el programa.
-
-
-### Probar funcionamiento
-
-En una terminal correr los siguientes comandos:
-
-```bash
-make docker-compose-up
-docker compose -f docker-compose-dev.yaml down --timeout 10
-```
-
-En otra terminal, ver los logs con
-
-```bash
-make docker-compose-logs
-```
-
-El flag `-t` (`--timeout`) en el `docker compose down` permite que se esperen unos segundos dados por el número pasado como argumento, hasta el envio de la señal SIGKILL al contenedor. Esta señal finaliza el proceso sin permitirle hacer una cerrada gracefull de los recursos. Por lo tanto, no puede ser manejada por el programa. Al momento de ejecutar `docker compose down` se envia la señal SIGTERM la cual sí puede ser manejada.
+Por otro lado, se monta el archivo correspondiente a cada cliente como un volumen de docker. Es necesario **descomprimir el archivo en el path.data/dataset.zip**. Si no se hace este paso, no se podrán levantar los clientes.

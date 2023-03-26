@@ -6,7 +6,8 @@ import logging
 UINT16_SIZE = 2
 
 NORMAL_CHUNK = 'C'
-
+CONFIRMATION = b'O'
+ERROR = b'E'
 
 def receive_bets_chunk(client_sock):
     type_chunk = chr(client_sock.recv(1)[0]) 
@@ -22,8 +23,12 @@ def receive_bets_chunk(client_sock):
 # Protocol Packet to receive Bet:
 # Each string is sended with a 2 byte len of string
 # data and the string after it to avoid short reads.
-
 def receive_bet(agency, client_sock) -> Bet:
+    """
+    Receives a single Bet from socket.
+    A bet is a list of strings in the following order
+    first_name - last_name - document - birthdate - number
+    """
     first_name = receive_string(client_sock)
     last_name = receive_string(client_sock)
     document = receive_string(client_sock)
@@ -36,16 +41,35 @@ def receive_uint16(client_sock):
     return int.from_bytes(len_data, byteorder='big')
 
 def receive_string(client_sock):
+    """
+    Receives a string len in 2 bytes, and then receives the whole string.
+    """
     string_len = receive_uint16(client_sock)
     name = recvall(client_sock, string_len)
     return name.decode('utf-8')
 
 def send_confirmation(client_sock):
-    client_sock.sendall(b'O')
+    """
+    Send the client a 'bets stored' confirmation byte 
+    """
+    client_sock.sendall(CONFIRMATION)
+
+def send_error(client_sock, error_msg):
+    """
+    Send error message to the client
+    """
+    msg = bytearray()
+    msg += ERROR
+    msg += len(error_msg).to_bytes(STRING_TO_READ_SIZE, "big")
+    msg += error_msg.encode('utf-8')
+    client_sock.sendall(msg)
+
 
 
 def recvall(client_sock, n):
-    """ recv all n bytes to avoid short read"""
+    """ 
+    Recv all n bytes to avoid short read
+    """
     data = b''
     while len(data) < n:
         data += client_sock.recv(n - len(data))

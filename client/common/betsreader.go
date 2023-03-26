@@ -9,14 +9,6 @@ import (
     log "github.com/sirupsen/logrus"
 )
 
-type Bet struct {
-    FirstName     string
-    LastName      string
-    Document      string
-    Birthdate     string
-    Number        string
-}
-
 type BetsReader struct {
     ID            string
     BatchSize int

@@ -54,6 +54,9 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(b1.birthdate, b2.birthdate)
         self.assertEqual(b1.number, b2.number)
 
+    def test_invalid_bet_raises(self):
+        self.assertRaises(ValueError, Bet, '1', 'first', 'last', '10000000','2000-12-200', 7500)
+    
 if __name__ == '__main__':
     unittest.main()
 
