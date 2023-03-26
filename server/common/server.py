@@ -42,8 +42,7 @@ class Server:
             # TODO: Modify the send to avoid short-writes
             client_sock.send("{}\n".format(msg).encode('utf-8'))
         except OSError as e:
-            if self._server_active:
-                logging.error(f'action: receive_message | result: fail | error: {e}')
+            logging.error(f'action: receive_message | result: fail | error: {e}')
         finally:
             client_sock.close()
             logging.info(f'action: close_client | result: success | ip: {addr[0]}')
@@ -64,15 +63,20 @@ class Server:
             logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
             return c
         except OSError as e:
-            logging.error(f'action: accept_connections | result: fail | error: {e}')
+            if self._server_active:
+                logging.error(f'action: accept_connections | result: fail | error: {e}')
             return False
 
     def __stop_accepting(self, *args):
+        """
+        Closes server socket in order to stop the server gracefully. 
+        """
         logging.info('action: stop_server | result: in_progress')
         self._server_active = False
         try:
             self._server_socket.shutdown(socket.SHUT_WR)
             self._server_socket.close()
             logging.info('action: stop_server | result: success')
+            logging.info('action: release_server_socketfd | result: success')
         except OSError as e:
             logging.error(f'action: stop_server | result: fail | error: {e}')

@@ -20,10 +20,10 @@ En una terminal correr los siguientes comandos:
 
 ```bash
 make docker-compose-up
-docker compose -f docker-compose-dev.yaml down --timeout 10
+docker docker-compose-down
 ```
 
-En otra terminal, ver los logs con
+Luego de ejecutar la primera linea, en otra terminal, ver los logs con
 
 ```bash
 make docker-compose-logs
