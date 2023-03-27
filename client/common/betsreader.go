@@ -30,7 +30,7 @@ func (b *BetsReader) processBets(conn net.Conn, protocol *Protocol) error {
         return err
     }
     defer file.Close()
-
+    protocol.sendBetsIntention(conn)
     reader := csv.NewReader(file)
     reader.Comma = ','
     reader.FieldsPerRecord = 5

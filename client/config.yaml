@@ -6,4 +6,4 @@ log:
 protocol:
   maxPackageSize: 8192
 reader:
-  batchSize: 20
+  batchSize: 50

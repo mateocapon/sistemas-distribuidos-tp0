@@ -1,19 +1,23 @@
 import socket
 import logging
 import signal
-from common.utils import Bet, store_bets
-from common.protocol import receive_bets_chunk, send_confirmation, send_error
-
+from common.utils import Bet, store_bets, load_bets, has_won
+from common.protocol import receive_bets_chunk, send_confirmation, send_error, get_client_intention
+from common.protocol import SEND_BETS_INTENTION, GET_WINNER_INTENTION, send_winners, receive_agency_id
 
 class Server:
-    def __init__(self, port, listen_backlog):
+    def __init__(self, port, listen_backlog, number_clients):
         # Initialize server socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
         self._server_active = True
+        self.number_clients = number_clients
+        # dict of "agency_ID: client_sock" 
+        self.waiting_winner_cli = {}
+        # set of agencies that have completed the storage of bets.
+        self.agencies_stored_bets = set()
         signal.signal(signal.SIGTERM, self.__stop_accepting)
-
 
     def run(self):
         """
@@ -37,21 +41,21 @@ class Server:
         If a problem arises in the communication with the client, the
         client socket will also be closed
         """
+        persist_connection = False
         try:
             addr = client_sock.getpeername()
-            more_chunks = True
-            while more_chunks:
-                more_chunks, bets, agency = receive_bets_chunk(client_sock)
-                store_bets(bets)
-                logging.info(f'action: apuesta_almacenada | result: success | agency: {agency} | n: {len(bets)} | active: {more_chunks}')
-                send_confirmation(client_sock)
-        except ValueError as e:
-            send_error(client_sock, f'error: {e}')
-            logging.error(f'action: receive_bets | result: fail | error: {e}')
+            client_intention = get_client_intention(client_sock)
+            if client_intention == SEND_BETS_INTENTION:
+                self.__receive_bets(client_sock)
+            elif client_intention == GET_WINNER_INTENTION:
+                persist_connection = self.__get_winner(client_sock)
+            else:
+                logging.error(f'action: get_client_intention | result: fail | error: intention_not_valid')
         except OSError as e:
             logging.error(f'action: receive_message | result: fail | error: {e}')
         finally:
-            client_sock.close()
+            if not persist_connection:
+                client_sock.close()
             logging.info(f'action: close_client | result: success | ip: {addr[0]}')
 
 
@@ -87,3 +91,44 @@ class Server:
             logging.info('action: release_server_socketfd | result: success')
         except OSError as e:
             logging.error(f'action: stop_server | result: fail | error: {e}')
+
+    def __receive_bets(self, client_sock):
+        try:
+            more_chunks = True
+            while more_chunks:
+                more_chunks, bets, agency = receive_bets_chunk(client_sock)
+                store_bets(bets)
+                logging.info(f'action: apuesta_almacenada | result: success | agency: {agency} | n: {len(bets)} | active: {more_chunks}')
+                send_confirmation(client_sock)
+            self.agencies_stored_bets.add(int(agency))
+        except ValueError as e:
+            send_error(client_sock, f'error: {e}')
+            logging.error(f'action: receive_bets | result: fail | error: {e}')
+
+    def __get_winner(self, client_sock):
+        agency_id = int(receive_agency_id(client_sock))
+        if agency_id in self.waiting_winner_cli:
+            self.waiting_winner_cli[agency_id].close()
+        self.waiting_winner_cli[agency_id] = client_sock
+        if len(self.agencies_stored_bets) == self.number_clients:
+            self.__send_winners()
+            return False
+        return True
+
+    def __send_winners(self):
+        documents_to_send = {}
+        logging.info(f'waiting winner: {self.waiting_winner_cli}')
+        for agency in self.waiting_winner_cli:
+            documents_to_send[agency] = []
+        logging.info(f'docs: {documents_to_send}')
+        bets = load_bets()
+        for bet in bets:
+            if has_won(bet) and bet.agency in documents_to_send:
+               documents_to_send[bet.agency].append(bet.document)
+        for agency, documents in documents_to_send.items():
+            send_winners(self.waiting_winner_cli[agency], documents)
+        logging.info(f'All bets sended')
+        # TODO: free resources
+        self.waiting_winner_cli = {}
+
+

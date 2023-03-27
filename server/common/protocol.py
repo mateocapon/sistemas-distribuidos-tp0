@@ -3,6 +3,9 @@ import socket
 import logging
 
 
+SEND_BETS_INTENTION = 'B'
+GET_WINNER_INTENTION = 'W'
+
 UINT16_SIZE = 2
 
 NORMAL_CHUNK = 'C'
@@ -10,7 +13,7 @@ CONFIRMATION = b'O'
 ERROR = b'E'
 
 def receive_bets_chunk(client_sock):
-    type_chunk = chr(client_sock.recv(1)[0]) 
+    type_chunk = chr(recvall(client_sock, 1)[0])
     more_chunks = type_chunk == NORMAL_CHUNK
     number_bets = receive_uint16(client_sock)
     agency = receive_string(client_sock)
@@ -65,12 +68,29 @@ def send_error(client_sock, error_msg):
     client_sock.sendall(msg)
 
 
-
 def recvall(client_sock, n):
     """ 
     Recv all n bytes to avoid short read
     """
     data = b''
     while len(data) < n:
-        data += client_sock.recv(n - len(data))
+        received = client_sock.recv(n - len(data)) 
+        if not received:
+            raise OSError("No data received in recvall")
+        data += received
     return data
+
+def get_client_intention(client_sock):
+    client_intention = chr(recvall(client_sock, 1)[0])
+    return client_intention
+
+def receive_agency_id(client_sock):
+    return receive_string(client_sock)
+
+def send_winners(client_sock, documents):
+    msg = bytearray()
+    msg += len(documents).to_bytes(UINT16_SIZE, "big")
+    for doc in documents:
+        msg += len(doc).to_bytes(UINT16_SIZE, "big")
+        msg += doc.encode('utf-8')
+    client_sock.sendall(msg)
