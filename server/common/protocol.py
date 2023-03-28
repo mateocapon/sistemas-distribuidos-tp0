@@ -10,7 +10,7 @@ CONFIRMATION = b'O'
 ERROR = b'E'
 
 def receive_bets_chunk(client_sock):
-    type_chunk = chr(client_sock.recv(1)[0]) 
+    type_chunk = chr(recvall(client_sock, 1)[0]) 
     more_chunks = type_chunk == NORMAL_CHUNK
     number_bets = receive_uint16(client_sock)
     agency = receive_string(client_sock)
@@ -72,5 +72,8 @@ def recvall(client_sock, n):
     """
     data = b''
     while len(data) < n:
-        data += client_sock.recv(n - len(data))
+        received = client_sock.recv(n - len(data)) 
+        if not received:
+            raise OSError("No data received in recvall")
+        data += received
     return data
