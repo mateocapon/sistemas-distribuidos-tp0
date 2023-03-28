@@ -70,6 +70,7 @@ func (c *Client) StartClient() {
     log.Infof("action: client_finished | result: success | client_id: %v", c.config.ID)
 }
 
+// Creates a new connection to server. Notifies server to get all winners in agency.
 func (c *Client) askForWinners() {
     c.createClientSocket()
     protocol := NewProtocol(c.config.MaxPackageSize)

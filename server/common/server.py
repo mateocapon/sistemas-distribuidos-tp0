@@ -32,7 +32,9 @@ class Server:
             if client_sock:
                 self.__handle_client_connection(client_sock)
             elif self._server_active:
-                self.__stop_accepting()   
+                self.__stop_accepting()
+        for _, client_sock in self.waiting_winner_cli.items():
+            client_sock.close()
 
     def __handle_client_connection(self, client_sock):
         """
@@ -93,6 +95,10 @@ class Server:
             logging.error(f'action: stop_server | result: fail | error: {e}')
 
     def __receive_bets(self, client_sock):
+        """
+        Receives all the bets from one agency and stores them
+        in the bets file.
+        """
         try:
             more_chunks = True
             while more_chunks:
@@ -101,11 +107,17 @@ class Server:
                 logging.info(f'action: apuesta_almacenada | result: success | agency: {agency} | n: {len(bets)} | active: {more_chunks}')
                 send_confirmation(client_sock)
             self.agencies_stored_bets.add(int(agency))
+            if len(self.agencies_stored_bets) == self.number_clients:
+                logging.info(f'action: sorteo | result: success')
+                self.__send_winners()
         except ValueError as e:
             send_error(client_sock, f'error: {e}')
             logging.error(f'action: receive_bets | result: fail | error: {e}')
 
     def __get_winner(self, client_sock):
+        """
+        If there is a winner, sends the winners Document to all clients waiting.
+        """
         agency_id = int(receive_agency_id(client_sock))
         if agency_id in self.waiting_winner_cli:
             self.waiting_winner_cli[agency_id].close()
@@ -116,19 +128,19 @@ class Server:
         return True
 
     def __send_winners(self):
+        """
+        Send the winner to all clients waiting.
+        """
         documents_to_send = {}
-        logging.info(f'waiting winner: {self.waiting_winner_cli}')
         for agency in self.waiting_winner_cli:
             documents_to_send[agency] = []
-        logging.info(f'docs: {documents_to_send}')
         bets = load_bets()
         for bet in bets:
             if has_won(bet) and bet.agency in documents_to_send:
                documents_to_send[bet.agency].append(bet.document)
         for agency, documents in documents_to_send.items():
             send_winners(self.waiting_winner_cli[agency], documents)
-        logging.info(f'All bets sended')
-        # TODO: free resources
+        logging.info(f'action: send_winners | result: success')
+        for _, client_sock in self.waiting_winner_cli.items():
+            client_sock.close()
         self.waiting_winner_cli = {}
-
-

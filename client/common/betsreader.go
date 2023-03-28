@@ -22,6 +22,7 @@ func NewBetsReader(ID string, BatchSize int) *BetsReader {
     return betsreader
 }
 
+// Reads the whole bets file and sends the bets through protocol. 
 func (b *BetsReader) processBets(conn net.Conn, protocol *Protocol) error {
     var bets []Bet
     filename := fmt.Sprintf("agency-%s.csv", b.ID)
