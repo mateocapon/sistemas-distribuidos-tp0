@@ -67,11 +67,6 @@ loop:
                 c.config.ID,
             )
 			break loop
-        case <-signalChan:
-            log.Infof("action: sigterm_detected | result: success | client_id: %v",
-                c.config.ID,
-            )
-            break loop
 		default:
 		}
 
@@ -104,8 +99,16 @@ loop:
             msg,
         )
 
-		// Wait a time between sending one message and the next one
-		time.Sleep(c.config.LoopPeriod)
+        select {
+        case <-signalChan:
+            log.Infof("action: sigterm_detected | result: success | client_id: %v",
+                c.config.ID,
+            )
+            break loop
+        case <-time.After(c.config.LoopPeriod):
+            // Wait a time between sending one message and the next one
+        }
+        
 	}
 
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
