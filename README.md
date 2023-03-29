@@ -5,13 +5,13 @@ Modificar servidor y cliente para que ambos sistemas terminen de forma _graceful
 
 ## Solución:
 
-Se implementa un cierre polite del cliente y del servidor. Esto es, cuando se recibe la señal SIGTERM se permite que termine la comunicación entre el cliente y el servidor, no se cierran los peer sockets inmediatamente.
+Se implementa un cierre polite del cliente y del servidor. Esto es, cuando se recibe la señal SIGTERM se permite que termine la comunicación entre el cliente y el servidor, no se cierran los peer sockets inmediatamente. Se diseño esto así, considerando que el sistema se bloqueará con a lo sumo un cliente y por muy pocos mensajes a traves de la red, dado que es un echo server.
 
 ### Servidor
-Se agrega el handler `__stop_accepting` en el server, de tal modo que se haga el shutdown y close del socket aceptador, cuando se recibe la signal SIGTERM. De este modo, se dejan de aceptar conexiones nuevas. Una vez que la conexión con el cliente actual termine, el programa finaliza. 
+Se agrega el handler `__stop_accepting` en el server, de tal modo que se haga el shutdown y close del socket aceptador, cuando se recibe la signal SIGTERM. De este modo, se dejan de aceptar conexiones nuevas. Una vez que la conexión con el cliente actual termine, el programa finaliza.
 
 ### Cliente
-Se agrega un channel por el cual se notifica la llegada de la señal SIGTERM. Ante la misma, se espera que termine el loop y se finaliza el programa.
+Se agrega un channel por el cual se notifica la llegada de la señal SIGTERM. Una vez que se llega al fin de la conexión, se espera al primer evento entre el SIGTERM y la finalización del sleep. Dependiendo del evento que arribe primero, se finaliza el loop, o se continúa con el mismo. 
 
 
 ### Probar funcionamiento
