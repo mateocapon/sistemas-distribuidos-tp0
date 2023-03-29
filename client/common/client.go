@@ -5,7 +5,8 @@ import (
     "os"
     "os/signal"
     "syscall"
-
+    "sync"
+    "time"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -52,13 +53,31 @@ func (c *Client) createClientSocket() error {
 	return nil
 }
 
-// StartClientLoop Send messages to the client until some time threshold is met
+// Starts the client and waits for the connection to finish or to receive a chanel.
 func (c *Client) StartClient() {
     signalChan := make(chan os.Signal, 1)
     signal.Notify(signalChan, syscall.SIGTERM)
+    var wg sync.WaitGroup
+    connectionFinishedChan := make(chan bool)
+    c.createClientSocket()
+    wg.Add(1)
+    go func() {
+        c.runConnection()
+        connectionFinishedChan <- true
+        wg.Done()
+    }()
+    select {
+    case <-signalChan:
+        // Closes the socket and waits for the  
+        c.conn.Close()
+    case <-connectionFinishedChan:
+        c.conn.Close()
+    }
+    wg.Wait()
+}
 
-	// Create the connection the server in every loop iteration. Send an
-	c.createClientSocket()
+// Sends the bet via Protocol. Logs errors and confirmation of server.
+func (c *Client) runConnection() {
 	bet := Bet{
 		ID:            c.config.ID,
 		FirstName:     c.config.FirstName,
@@ -74,11 +93,11 @@ func (c *Client) StartClient() {
             c.config.ID,
 			err,
 		)
-		c.conn.Close()
 		return
 	}
+    time.Sleep(time.Duration(2))
+    log.Infof("sleepin")
 	confirmation, err := protocol.recvConfirmation(c.conn)		
-	c.conn.Close()
 	log.Infof("action: release_socketfd | result: success | client_id: %v",
             c.config.ID,
     )
@@ -96,5 +115,5 @@ func (c *Client) StartClient() {
 		    bet.Number,
 		)
 	}
-	log.Infof("action: client_finished | result: success | client_id: %v", c.config.ID)
+    log.Infof("action: client_finished | result: success | client_id: %v", c.config.ID)
 }
