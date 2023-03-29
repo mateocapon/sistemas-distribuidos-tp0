@@ -1,17 +1,15 @@
-
-
+from common.clienthandler import GET_WINNER_VALIDATED
+import logging
 
 def count_loaded_bets(clients_queue, load_bets_queue, waiting_winner_queue, number_clients):
-	while len(self.agencies_stored_bets) < self.number_clients:
-		client_sock, agency = load_bets_queue.get()
-	while True:
-			
-
-
-
-
-            # Ver como contar hasta 5 entre hilos.
-            # self.agencies_stored_bets.add(int(agency))
-            # if :
-            #     logging.info(f'action: sorteo | result: success')
-            #     self.__send_winners()
+    # set of agencies that have completed the storage of bets.
+    agencies_stored_bets = set()
+    while len(agencies_stored_bets) < number_clients:
+        agency = load_bets_queue.get()
+        agencies_stored_bets.add(int(agency))
+    
+    logging.info(f'action: sorteo | result: success')
+    while True:
+        client_sock = waiting_winner_queue.get()
+        # the lottery is done, client is ready to get results.
+        clients_queue.put((client_sock, GET_WINNER_VALIDATED))

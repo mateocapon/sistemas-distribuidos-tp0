@@ -3,7 +3,8 @@ import logging
 import signal
 import multiprocessing as mp
 from common.clienthandler import handle_client_connection
-from common._bets_loaded_counter import count_loaded_bets
+from common.bets_loaded_counter import count_loaded_bets
+from common.clienthandler import JUST_ARRIVED
 
 class Server:
     def __init__(self, port, listen_backlog, number_clients, n_workers = 4):
@@ -13,25 +14,22 @@ class Server:
         self._server_socket.listen(listen_backlog)
         self._server_active = True
         self.number_clients = number_clients
-        # dict of "agency_ID: client_sock" 
-        self.waiting_winner_cli = {}
-        # set of agencies that have completed the storage of bets.
-        self.agencies_stored_bets = set()
 
-        self.clients_accepted_queue = mp.Queue()
-        self.load_bets_queue = mp.Queue()
-        self.waiting_winner_queue = mp.Queue()
-
+        self._clients_accepted_queue = mp.Queue()
+        self._load_bets_queue = mp.Queue()
+        self._waiting_winner_queue = mp.Queue()
+        self._bets_file_lock = mp.Lock()
         self._workers = [mp.Process(target=handle_client_connection, 
-                                    args=(self.clients_accepted_queue, 
-                                          self.load_bets_queue, 
-                                          self.waiting_winner_queue)) 
+                                    args=(self._clients_accepted_queue, 
+                                          self._load_bets_queue, 
+                                          self._waiting_winner_queue,
+                                          self._bets_file_lock)) 
                                     for i in range(n_workers)]
 
         self._bets_loaded_counter = mp.Process(target=count_loaded_bets, 
-                                               args=(self.clients_accepted_queue, 
-                                                     self.load_bets_queue, 
-                                                     self.waiting_winner_queue,
+                                               args=(self._clients_accepted_queue, 
+                                                     self._load_bets_queue, 
+                                                     self._waiting_winner_queue,
                                                      number_clients))
         signal.signal(signal.SIGTERM, self.__stop_accepting)
 
@@ -45,15 +43,18 @@ class Server:
         """
         for worker in self._workers:
             worker.start()
+        self._bets_loaded_counter.start()
 
         while self._server_active:
             client_sock = self.__accept_new_connection()
             if client_sock:
-                self.__handle_client_connection(client_sock)
+                self._clients_accepted_queue.put((client_sock, JUST_ARRIVED))
             elif self._server_active:
                 self.__stop_accepting()
-        for _, client_sock in self.waiting_winner_cli.items():
-            client_sock.close()
+
+        for worker in self._workers:
+            worker.join()
+        self._bets_loaded_counter.join()
 
     def __accept_new_connection(self):
         """
@@ -83,6 +84,7 @@ class Server:
         try:
             self._server_socket.shutdown(socket.SHUT_WR)
             self._server_socket.close()
+            self._clients_accepted_queue.close()
             logging.info('action: stop_server | result: success')
             logging.info('action: release_server_socketfd | result: success')
         except OSError as e:
