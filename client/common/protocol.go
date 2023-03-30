@@ -8,6 +8,7 @@ import (
     "fmt"
     "encoding/binary"
     "io"
+    "math"
 )
 
 
@@ -51,10 +52,7 @@ func (p *Protocol) sendBets(conn net.Conn, bets []Bet, ID string, typeChunk byte
                      toBigEndian(len(bet.Number)), []byte(bet.Number))
     }
     joined := bytes.Join(data, []byte(""))
-    if len(joined) > p.maxPackageSize {
-        return errors.New(fmt.Sprintf("Package of size %d is too big", len(data))) 
-    }
-    return writeAll(conn, joined)
+    return p.writeAll(conn, joined)
 }
 
 // sends a SIMPLE_CHUNK: it is not the last chunk
@@ -68,11 +66,13 @@ func (p *Protocol) sendBetsLastChunk(conn net.Conn, bets []Bet, ID string) error
 }
 
 // writes all the content of the data in socket.
-func writeAll(conn net.Conn, data []byte) error {
+func (p *Protocol) writeAll(conn net.Conn, data []byte) error {
     totalBytes := len(data)
     bytesWritten := 0
     for bytesWritten < totalBytes {
-        n, err := conn.Write(data[bytesWritten:])
+        // write limited by maxPackageSize.
+        limitWrite := math.Min(float64(bytesWritten + p.maxPackageSize), float64(totalBytes))
+        n, err := conn.Write(data[bytesWritten:int(limitWrite)])
         if err != nil {
             return err
         }
@@ -93,7 +93,7 @@ func (p *Protocol) recvConfirmation(conn net.Conn) (bool, error) {
         if err != nil {
             return false, err
         }
-        return false, errors.New(fmt.Sprintf("server-error-response: %s", s))
+        return false, errors.New(fmt.Sprintf("server_error_response: %s", s))
     }
     return true, nil
 }
