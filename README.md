@@ -27,3 +27,5 @@ Esta situación se puede observar en el siguiente diagrama de secuencias, donde 
 En función de sincronizar el acceso al archivo de apuestas, la pool de procesos comparte un Lock para escribir una apuesta en el archivo. Siendo que la lectura del archivo se hace solamente cuando la escritura finalizó, no se toma el lock para poder leer del archivo.
 
 En cuánto a la sincronización entre procesos, tal como se comenta anteriormente, se realizó con colas bloqueantes.
+
+Un punto que me parece interesante agregar, es que los procesos `handle_client_connection()` cuando se encuentran con una agencia que desea enviar las apuestas, procesa un chunk de las apuestas y vuelve a encolar al cliente. No procesa todas las apuestas en un loop. De este modo, existe un mayor fairness entre las agencias que desean enviar apuestas. Cada loop tiene solo una parte del procesamiento total que hay que hacer.

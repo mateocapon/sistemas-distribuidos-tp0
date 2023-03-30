@@ -7,7 +7,7 @@ from common.bets_loaded_counter import count_loaded_bets
 from common.clienthandler import JUST_ARRIVED
 
 class Server:
-    def __init__(self, port, listen_backlog, number_clients, n_workers = 4):
+    def __init__(self, port, listen_backlog, number_clients, n_workers):
         # Initialize server socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))

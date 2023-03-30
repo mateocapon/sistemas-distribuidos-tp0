@@ -27,6 +27,7 @@ def initialize_config():
         config_params["listen_backlog"] = int(os.getenv('SERVER_LISTEN_BACKLOG', config["DEFAULT"]["SERVER_LISTEN_BACKLOG"]))
         config_params["number_clients"] = int(os.getenv('NUMBER_CLIENTS', config["DEFAULT"]["NUMBER_CLIENTS"]))
         config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
+        config_params["number_processes_pool"] = int(os.getenv('NUMBER_PROCESSES_POOL', config["DEFAULT"]["NUMBER_PROCESSES_POOL"]))
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -41,6 +42,7 @@ def main():
     port = config_params["port"]
     listen_backlog = config_params["listen_backlog"]
     number_clients = config_params["number_clients"]
+    number_processes_pool = config_params["number_processes_pool"]
 
     initialize_log(logging_level)
 
@@ -51,7 +53,7 @@ def main():
 
     # Initialize server and start server loop
     try:
-        server = Server(port, listen_backlog, number_clients)
+        server = Server(port, listen_backlog, number_clients, number_processes_pool)
         server.run()
     except OSError as e:
         logging.error(f'action: initialize_server | result: fail | error: {e}')
