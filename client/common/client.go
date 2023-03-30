@@ -62,6 +62,7 @@ func (c *Client) StartClient() {
     wg.Add(1)
     go func() {
         c.runConnection()
+        log.Infof("asds")
         connectionFinishedChan <- true
         wg.Done()
     }()

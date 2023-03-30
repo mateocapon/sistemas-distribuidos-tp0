@@ -8,6 +8,7 @@ import (
     "fmt"
     "io"
     "encoding/binary"
+    "math"
 )
 
 type Protocol struct {
@@ -33,13 +34,6 @@ const ERROR = 'E'
 // Above protocol is for all items in a bet, with order:
 // ID - FirstName - LastName - Document - BirthDate - Number
 func (p *Protocol) sendBet(conn net.Conn, bet Bet) error {
-    lenMessage := LEN_STRING + len(bet.ID) + LEN_STRING + len(bet.FirstName) +
-                  LEN_STRING + len(bet.LastName) + LEN_STRING + len(bet.Document) +
-                  LEN_STRING + len(bet.Birthdate) + LEN_STRING + len(bet.Number)
-    if lenMessage > p.maxPackageSize {
-        return errors.New(fmt.Sprintf("Package of size %d is too big", lenMessage)) 
-    }
-
     data := [][]byte{toBigEndian(len(bet.ID)), []byte(bet.ID), 
                      toBigEndian(len(bet.FirstName)), []byte(bet.FirstName),
                      toBigEndian(len(bet.LastName)), []byte(bet.LastName),
@@ -48,15 +42,17 @@ func (p *Protocol) sendBet(conn net.Conn, bet Bet) error {
                      toBigEndian(len(bet.Number)), []byte(bet.Number),
                     }
     joined := bytes.Join(data, []byte(""))
-    return writeAll(conn, joined)
+    return p.writeAll(conn, joined)
 }
 
 // writes all the content of the data in socket.
-func writeAll(conn net.Conn, data []byte) error {
+func (p *Protocol) writeAll(conn net.Conn, data []byte) error {
     totalBytes := len(data)
     bytesWritten := 0
     for bytesWritten < totalBytes {
-        n, err := conn.Write(data[bytesWritten:])
+        // write limited by maxPackageSize.
+        limitWrite := math.Min(float64(bytesWritten + p.maxPackageSize), float64(totalBytes))
+        n, err := conn.Write(data[bytesWritten:int(limitWrite)])
         if err != nil {
             return err
         }
