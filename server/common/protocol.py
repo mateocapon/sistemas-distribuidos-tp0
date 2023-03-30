@@ -57,5 +57,8 @@ def recvall(client_sock, n):
     """
     data = b''
     while len(data) < n:
-        data += client_sock.recv(n - len(data))
+        received = client_sock.recv(n - len(data)) 
+        if not received:
+            raise OSError("No data received in recvall")
+        data += received
     return data

@@ -12,6 +12,8 @@ class Server:
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
         self._server_active = True
+        self._client_sock = None
+        self._client_active = False
         signal.signal(signal.SIGTERM, self.__stop_accepting)
 
 
@@ -24,13 +26,14 @@ class Server:
         finishes, servers starts to accept new connections again
         """
         while self._server_active:
-            client_sock = self.__accept_new_connection()
-            if client_sock:
-                self.__handle_client_connection(client_sock)
+            self._client_sock = self.__accept_new_connection()
+            if self._client_sock:
+                self._client_active = True
+                self.__handle_client_connection()
             elif self._server_active:
                 self.__stop_accepting()   
 
-    def __handle_client_connection(self, client_sock):
+    def __handle_client_connection(self):
         """
         Read message from a specific client socket and closes the socket
 
@@ -38,18 +41,23 @@ class Server:
         client socket will also be closed
         """
         try:
-            addr = client_sock.getpeername()
-            bet = receive_bet(client_sock)
+            addr = self._client_sock.getpeername()
+            bet = receive_bet(self._client_sock)
             store_bets([bet])
             logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
-            send_confirmation(client_sock)
+            send_confirmation(self._client_sock)
         except ValueError as e:
-            send_error(client_sock, f'error: {e}')
+            send_error(self._client_sock, f'error: {e}')
             logging.error(f'action: receive_bet | result: fail | error: {e}')
         except OSError as e:
             logging.error(f'action: receive_message | result: fail | error: {e}')
         finally:
-            client_sock.close()
+            # It might have been closed by Signal handler.
+            if self._client_active:
+                # This does not avoid calling twice close() to _client_sock, but avoids
+                # the signal handler to call close if the main thread is inside close().
+                self._client_active = False
+                self._client_sock.close()
             logging.info(f'action: close_client | result: success | ip: {addr[0]}')
 
 
@@ -85,3 +93,16 @@ class Server:
             logging.info('action: release_server_socketfd | result: success')
         except OSError as e:
             logging.error(f'action: stop_server | result: fail | error: {e}')
+        except:
+            logging.error(f'action: stop_server | result: fail | error: unknown')
+
+        try:
+            if self._client_active:
+                self._client_active = False
+                self._client_sock.shutdown(socket.SHUT_WR)
+                self._client_sock.close()
+        except OSError as e:
+            logging.error(f'action: stop_client_sock | result: fail | error: {e}')
+        except:
+            logging.error(f'action: stop_client_sock | result: fail | error: unknown')
+                

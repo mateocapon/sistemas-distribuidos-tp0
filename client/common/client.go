@@ -6,7 +6,6 @@ import (
     "os/signal"
     "syscall"
     "sync"
-    "time"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -73,6 +72,9 @@ func (c *Client) StartClient() {
     case <-connectionFinishedChan:
         c.conn.Close()
     }
+	log.Infof("action: release_socketfd | result: success | client_id: %v",
+            c.config.ID,
+    )
     wg.Wait()
 }
 
@@ -95,12 +97,7 @@ func (c *Client) runConnection() {
 		)
 		return
 	}
-    time.Sleep(time.Duration(2))
-    log.Infof("sleepin")
 	confirmation, err := protocol.recvConfirmation(c.conn)		
-	log.Infof("action: release_socketfd | result: success | client_id: %v",
-            c.config.ID,
-    )
 
 	if err != nil {
 		log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
