@@ -22,6 +22,10 @@ def handle_client_connection(clients_queue, load_bets_queue, waiting_winner_queu
     while server_working:
         try:
             client_sock, status = clients_queue.get()
+        except ValueError:
+            server_working = False
+            break
+        try:
             persist_connection = False
             addr = client_sock.getpeername()
             if status == JUST_ARRIVED:
@@ -40,10 +44,14 @@ def handle_client_connection(clients_queue, load_bets_queue, waiting_winner_queu
                 logging.error(f'action: get_client_intention | result: fail | error: intention_not_valid')
         except OSError as e:
             logging.error(f'action: receive_message | result: fail | error: {e}')
+        except ValueError:
+            logging.debug(f'action: put_socket_queue | result: fail')
         finally:
             if not persist_connection:
                 client_sock.close()
                 logging.info(f'action: close_client | result: success | ip: {addr[0]}')
+    logging.debug(f'action: stop_process_client_handler | result: success')
+
 
 def __receive_bets(client_sock, clients_queue, load_bets_queue, bets_file_lock):
     """

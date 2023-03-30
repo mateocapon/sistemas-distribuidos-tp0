@@ -42,19 +42,31 @@ class Server:
         finishes, servers starts to accept new connections again
         """
         for worker in self._workers:
+            worker.daemon = True
             worker.start()
+        self._bets_loaded_counter.daemon = True
         self._bets_loaded_counter.start()
 
-        while self._server_active:
-            client_sock = self.__accept_new_connection()
-            if client_sock:
-                self._clients_accepted_queue.put((client_sock, JUST_ARRIVED))
-            elif self._server_active:
-                self.__stop_accepting()
-
-        for worker in self._workers:
-            worker.join()
-        self._bets_loaded_counter.join()
+        try:
+            while self._server_active:
+                client_sock = self.__accept_new_connection()
+                if client_sock:
+                    self._clients_accepted_queue.put((client_sock, JUST_ARRIVED))
+                elif self._server_active:
+                    self.__stop_accepting()
+        except ValueError:
+            logging.info(f'action: put_client | result: fail')
+        finally:
+            logging.info(f'action: join_processes | result: in_progress')
+            # for worker in self._workers:
+            #     logging.info(f'{worker.is_alive()}')
+    
+            # logging.info(f'{self._bets_loaded_counter.is_alive()}')
+            
+            for worker in self._workers:
+                worker.join()
+            self._bets_loaded_counter.join()
+            logging.info(f'action: join_processes | result: success')
 
     def __accept_new_connection(self):
         """
@@ -85,6 +97,8 @@ class Server:
             self._server_socket.shutdown(socket.SHUT_WR)
             self._server_socket.close()
             self._clients_accepted_queue.close()
+            self._load_bets_queue.close()
+            self._waiting_winner_queue.close()
             logging.info('action: stop_server | result: success')
             logging.info('action: release_server_socketfd | result: success')
         except OSError as e:
