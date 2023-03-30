@@ -8,9 +8,8 @@ import (
     "fmt"
     "encoding/binary"
     "io"
+    "math"
 )
-
-
 
 type Protocol struct {
     maxPackageSize int
@@ -53,10 +52,7 @@ func (p *Protocol) sendBets(conn net.Conn, bets []Bet, ID string, typeChunk byte
                      toBigEndian(len(bet.Number)), []byte(bet.Number))
     }
     joined := bytes.Join(data, []byte(""))
-    if len(joined) > p.maxPackageSize {
-        return errors.New(fmt.Sprintf("Package of size %d is too big", len(joined))) 
-    }
-    return writeAll(conn, joined)
+    return p.writeAll(conn, joined)
 }
 
 // sends a SIMPLE_CHUNK: it is not the last chunk
@@ -72,15 +68,17 @@ func (p *Protocol) sendBetsLastChunk(conn net.Conn, bets []Bet, ID string) error
 // send a single byte notifying the intention to send bets.
 func (p* Protocol) sendBetsIntention(conn net.Conn) error {
     data := []byte{SEND_BETS_INTENTION}
-    return writeAll(conn, data)
+    return p.writeAll(conn, data)
 }
 
 // writes all the content of the data in socket.
-func writeAll(conn net.Conn, data []byte) error {
+func (p *Protocol) writeAll(conn net.Conn, data []byte) error {
     totalBytes := len(data)
     bytesWritten := 0
     for bytesWritten < totalBytes {
-        n, err := conn.Write(data[bytesWritten:])
+        // write limited by maxPackageSize.
+        limitWrite := math.Min(float64(bytesWritten + p.maxPackageSize), float64(totalBytes))
+        n, err := conn.Write(data[bytesWritten:int(limitWrite)])
         if err != nil {
             return err
         }
@@ -101,7 +99,7 @@ func (p *Protocol) recvConfirmation(conn net.Conn) (bool, error) {
         if err != nil {
             return false, err
         }
-        return false, errors.New(fmt.Sprintf("server-error-response: %s", s))
+        return false, errors.New(fmt.Sprintf("server_error_response: %s", s))
     }
     return true, nil
 }
@@ -139,7 +137,7 @@ func (p *Protocol) receiveWinners(conn net.Conn, ID string) (int, error) {
     var data [][]byte
     data = append(data, []byte{GET_WINNER}, toBigEndian(len(ID)), []byte(ID))
     joined := bytes.Join(data, []byte(""))
-    if err := writeAll(conn, joined); err != nil {
+    if err := p.writeAll(conn, joined); err != nil {
         return -1, err
     }
     reader := bufio.NewReader(conn)

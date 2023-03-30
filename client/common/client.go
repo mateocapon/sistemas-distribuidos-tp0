@@ -6,7 +6,8 @@ import (
     "os/signal"
     "syscall"
 
-    log "github.com/sirupsen/logrus"
+    "sync"
+	log "github.com/sirupsen/logrus"
 )
 
 // ClientConfig Configuration used by the client
@@ -48,31 +49,64 @@ func (c *Client) createClientSocket() error {
     return nil
 }
 
-// StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClient() {
     signalChan := make(chan os.Signal, 1)
     signal.Notify(signalChan, syscall.SIGTERM)
-
-    // Create the connection the server in every loop iteration. Send an
+    var wg sync.WaitGroup
+    connectionFinishedChan := make(chan bool)
     c.createClientSocket()
-    protocol := NewProtocol(c.config.MaxPackageSize)
-    betsreader := NewBetsReader(c.config.ID, c.config.BatchSize)
-    err := betsreader.processBets(c.conn, protocol)
-    c.conn.Close()
-    if err != nil {
-        log.Errorf("action: send_bets | result: fail | client_id: %v | error: %v",
+    
+    wg.Add(1)
+    go func() {
+        protocol := NewProtocol(c.config.MaxPackageSize)
+        betsreader := NewBetsReader(c.config.ID, c.config.BatchSize)
+        err := betsreader.processBets(c.conn, protocol)
+        if err != nil {
+            log.Errorf("action: send_bets | result: fail | client_id: %v | error: %v",
+                c.config.ID,
+                err,
+            )
+        }
+        connectionFinishedChan <- true
+        wg.Done()
+    }()
+    finished := false
+    select {
+    case <-signalChan: 
+        c.conn.Close()
+        finished = true
+    case <-connectionFinishedChan:
+        c.conn.Close()
+    }
+    log.Infof("action: release_socketfd | result: success | client_id: %v",
             c.config.ID,
-            err,
-        )
+    )
+    wg.Wait()
+    if finished {
         return
     }
-    c.askForWinners()
-    log.Infof("action: client_finished | result: success | client_id: %v", c.config.ID)
+    c.createClientSocket()
+    
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        c.askForWinners()
+        connectionFinishedChan <- true
+    }()
+    select {
+    case <-signalChan: 
+        c.conn.Close()
+    case <-connectionFinishedChan:
+        c.conn.Close()
+    }
+    log.Infof("action: release_socketfd | result: success | client_id: %v",
+            c.config.ID,
+    )
+    wg.Wait()
 }
 
 // Creates a new connection to server. Notifies server to get all winners in agency.
 func (c *Client) askForWinners() {
-    c.createClientSocket()
     protocol := NewProtocol(c.config.MaxPackageSize)
     n_winners, err := protocol.receiveWinners(c.conn, c.config.ID)
     c.conn.Close()
