@@ -13,7 +13,7 @@ CONFIRMATION = b'O'
 ERROR = b'E'
 
 def receive_bets_chunk(client_sock):
-    type_chunk = chr(recvall(client_sock, 1)[0])
+    type_chunk = chr(recvall(client_sock, 1)[0]) 
     more_chunks = type_chunk == NORMAL_CHUNK
     number_bets = receive_uint16(client_sock)
     agency = receive_string(client_sock)

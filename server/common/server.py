@@ -89,4 +89,5 @@ class Server:
             logging.info('action: release_server_socketfd | result: success')
         except OSError as e:
             logging.error(f'action: stop_server | result: fail | error: {e}')
-
+        except:
+            logging.error(f'action: stop_server | result: fail | error: unknown')
