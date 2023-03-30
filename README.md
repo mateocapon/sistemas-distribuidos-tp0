@@ -21,6 +21,8 @@ Este tercer proceso ejecuta la función `count_loaded_bets()` que consta de dos 
 
 Esta situación se puede observar en el siguiente diagrama de secuencias, donde cada Actor es un proceso diferente.
 
+![image](https://user-images.githubusercontent.com/65830097/228957706-3dce25af-14df-46d7-9a09-6a5418277076.png)
+
 
 En función de sincronizar el acceso al archivo de apuestas, la pool de procesos comparte un Lock para escribir una apuesta en el archivo. Siendo que la lectura del archivo se hace solamente cuando la escritura finalizó, no se toma el lock para poder leer del archivo.
 
