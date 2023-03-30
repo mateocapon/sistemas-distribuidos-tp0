@@ -96,9 +96,14 @@ class Server:
         try:
             self._server_socket.shutdown(socket.SHUT_WR)
             self._server_socket.close()
+
+            self._load_bets_queue.put(None)
+            self._waiting_winner_queue.put(None)
+
             self._clients_accepted_queue.close()
             self._load_bets_queue.close()
             self._waiting_winner_queue.close()
+
             logging.info('action: stop_server | result: success')
             logging.info('action: release_server_socketfd | result: success')
         except OSError as e:

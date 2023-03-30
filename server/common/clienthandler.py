@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import socket
 import logging
+import queue
 from common.utils import Bet, store_bets, load_bets, has_won
 from common.protocol import receive_bets_chunk, send_confirmation, send_error, get_client_intention
 from common.protocol import SEND_BETS_INTENTION, GET_WINNER_INTENTION, send_winners, receive_agency_id
@@ -8,6 +9,7 @@ from common.protocol import SEND_BETS_INTENTION, GET_WINNER_INTENTION, send_winn
 
 JUST_ARRIVED = 'A'
 GET_WINNER_VALIDATED = 'G'
+
 
 def handle_client_connection(clients_queue, load_bets_queue, waiting_winner_queue, bets_file_lock):
     """
@@ -22,10 +24,12 @@ def handle_client_connection(clients_queue, load_bets_queue, waiting_winner_queu
     while server_working:
         try:
             client_sock, status = clients_queue.get()
-        except ValueError:
-            server_working = False
-            break
-        try:
+            if not client_sock:
+                server_working = False
+                release_resources_from_queues(load_bets_queue, waiting_winner_queue)
+                clients_queue.close()
+                persist_connection = True # to avoid calling close on None object.
+                break
             persist_connection = False
             addr = client_sock.getpeername()
             if status == JUST_ARRIVED:
@@ -50,7 +54,7 @@ def handle_client_connection(clients_queue, load_bets_queue, waiting_winner_queu
             if not persist_connection:
                 client_sock.close()
                 logging.info(f'action: close_client | result: success | ip: {addr[0]}')
-    logging.debug(f'action: stop_process_client_handler | result: success')
+    logging.info(f'action: stop_process_client_handler | result: success')
 
 
 def __receive_bets(client_sock, clients_queue, load_bets_queue, bets_file_lock):
@@ -89,3 +93,23 @@ def __send_winners(client_sock):
     documents = list(map(lambda bet: bet.document, winning_bets))
     send_winners(client_sock, documents)
     logging.info(f'action: send_winners | result: success')
+
+
+def release_resources_from_queues(load_bets_queue, waiting_winner_queue):
+    """
+    empties the queue. The last process will empty the whole queue.
+    """
+    try:
+        while True:
+            _agency = load_bets_queue.get_nowait()
+    except queue.Empty:
+        pass
+
+    try:
+        while True:
+            client_sock = waiting_winner_queue.get_nowait()
+            client_sock.close()
+    except queue.Empty:
+        pass
+    load_bets_queue.close()
+    waiting_winner_queue.close()
